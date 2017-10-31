@@ -1,0 +1,10 @@
+*.pyc
+*.swp
+*.swo
+data
+_*.cpp
+ZhuSuan
+*.so
+build
+results
+
