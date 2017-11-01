@@ -27,10 +27,6 @@ class PMD(object):
         self.my_pw_distance = lambda x, y: (pw_l2(x, y) 
                   if FLAGS.dist == 'l2' else pw_l1(x, y))
 
-        self.outbs  = FLAGS.bs
-        self.mbs    = FLAGS.bs
-        self.optbs  = FLAGS.obs
-
         # Output variables
         var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                          scope='transformation')
@@ -92,9 +88,9 @@ class PMD(object):
                 info.time_align += time.time() - t
 
                 t0 = time.time()
-                for t in range(self.mbs // self.optbs):
-                    z1   = Z1[t*self.optbs : (t+1)*self.optbs]
-                    z2   = Z2[t*self.optbs : (t+1)*self.optbs]
+                for t in range(FLAGS.mbs // FLAGS.bs):
+                    z1   = Z1[t*FLAGS.bs : (t+1)*FLAGS.bs]
+                    z2   = Z2[t*FLAGS.bs : (t+1)*FLAGS.bs]
                     f    = {self.noise_ph_1: z1, self.noise_ph_2: z2,
                             self.learning_rate_ph: learning_rate}
                     f.update(opt_dict)

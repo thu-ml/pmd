@@ -25,7 +25,6 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('dataset', 'mnist', 'mnist, svhn or lfw')
 tf.app.flags.DEFINE_string('dist', 'l1', 'Type of distance: l1, l2, cos or mmd')
 tf.app.flags.DEFINE_string('arch', 'fc', 'Network architecture: fc, conv or ae')
-tf.app.flags.DEFINE_integer('obs', 100, 'Optimize batch size')
 tf.app.flags.DEFINE_float('lr0', 3e-4, 'Maximal learning rate')
 tf.app.flags.DEFINE_integer('t0', 10, 'Maximal learning rate')
 tf.app.flags.DEFINE_integer('lag', 1, 'Number of epoches to output image')
@@ -112,11 +111,13 @@ def main(argv=None):
 
     # Load data
     x_train, sorted_x_train = \
-            utils.load_image_data(FLAGS.dataset, n_xl, n_channels, FLAGS.bs)
+            utils.load_image_data(FLAGS.dataset, n_xl, n_channels, FLAGS.mbs)
     xshape = (-1, n_xl, n_xl, n_channels)
 
     # Make some data
-    is_training, generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, n_z, ngf)
+    is_training, generator = get_generator(FLAGS.arch, 
+                                           n_code if FLAGS.arch=='ae' else n_x, 
+                                           n_xl, n_channels, n_z, ngf)
 
     # Define training/evaluation parameters
     run_name = 'results/{}_{}_{}_{}_c{}_mbs{}_bs{}_lr{}_t0{}'.format(
