@@ -3,9 +3,13 @@ from tensorflow.contrib import layers
 from utils import reuse
 
 def get_generator(arch, n_x, n_xl, n_channels, n_z, ngf):
+    is_training = tf.placeholder_with_default(False, shape=[], name='is_training')
+    normalizer_params = {'is_training': is_training,
+                         'updates_collections': None,
+                         'decay': 0.9}
     if arch == 'fc':
         @reuse('transformation')
-        def generator(z_ph, n_x, normalizer_params):
+        def generator(z_ph):
             h = layers.fully_connected(z_ph, 500, 
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
             h = layers.fully_connected(h, 500, 
@@ -14,7 +18,7 @@ def get_generator(arch, n_x, n_xl, n_channels, n_z, ngf):
             return tf.reshape(x, [-1, n_xl, n_xl, n_channels])
     elif arch == 'conv':
         @reuse('transformation')
-        def generator(z_ph, n_x, normalizer_params):
+        def generator(z_ph):
             h = tf.reshape(z_ph, [-1, 1, 1, n_z])
             h = layers.conv2d_transpose(h, ngf*4, 3, padding='VALID',
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
@@ -26,7 +30,7 @@ def get_generator(arch, n_x, n_xl, n_channels, n_z, ngf):
             return x
     else:
         @reuse('transformation')
-        def generator(z_ph, n_x, normalizer_params):
+        def generator(z_ph):
             h = layers.fully_connected(z_ph, 500, 
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
             h = layers.fully_connected(h, 500, 
@@ -34,4 +38,4 @@ def get_generator(arch, n_x, n_xl, n_channels, n_z, ngf):
             x = layers.fully_connected(h, n_x)
             return x
 
-    return generator
+    return is_training, generator

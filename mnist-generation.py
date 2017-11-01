@@ -116,7 +116,7 @@ def main(argv=None):
     xshape = (-1, n_xl, n_xl, n_channels)
 
     # Make some data
-    generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, n_z, ngf)
+    is_training, generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, n_z, ngf)
 
     # Define training/evaluation parameters
     run_name = 'results/{}_{}_{}_{}_c{}_mbs{}_bs{}_lr{}_t0{}'.format(
@@ -127,24 +127,20 @@ def main(argv=None):
         os.mkdir(run_name)
 
     # Build the computation graph
-    is_training = tf.placeholder_with_default(False, shape=[], name='is_training')
-    normalizer_params = {'is_training': is_training,
-                         'updates_collections': None,
-                         'decay': 0.9}
 
     if FLAGS.arch == 'ae':
         ae = ConvAE(x_train, (None, n_xl, n_xl, n_channels), ngf)
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             ae.train(sess)
-            x_code = ae.encode(x_train, sess)
+            x_code        = ae.encode(x_train, sess)
             sorted_x_code = ae.encode(sorted_x_train, sess)
 
         model = MyPMD(x_code, sorted_x_code, xshape,
-                      lambda x: generator(x, n_code, normalizer_params), run_name, ae)
+                      generator, run_name, ae)
     else:
         model = MyPMD(x_train, sorted_x_train, xshape,
-                      lambda x: generator(x, n_x, normalizer_params), run_name)
+                      generator, run_name)
 
     # Run the inference
     with tf.Session() as sess:
@@ -156,7 +152,7 @@ def main(argv=None):
         print('Training...')
         model.train(sess, gen_dict={model.batch_size_ph: FLAGS.mbs, is_training: False},
                           opt_dict={model.batch_size_ph: FLAGS.bs,  is_training: True},
-                    iters=x_train.shape[0]//FLAGS.mbs)
+                          iters=x_train.shape[0]//FLAGS.mbs)
 
 if __name__ == "__main__":
     tf.app.run()
