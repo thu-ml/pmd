@@ -61,12 +61,11 @@ class PMD(object):
 
         if FLAGS.dist == 'mmd':
             match_result = 0
-            assigned_x = X2
+            a = np.arange(X1.shape[0])
         else:
             a, match_result = get_assignments(obj_matrix, FLAGS.match)
-            assigned_x = X2[a]
 
-        return assigned_x, match_result
+        return a, match_result
 
     def train(self, sess, gen_dict, opt_dict, iters):
         for epoch in range(1, FLAGS.epoches+1):
@@ -75,7 +74,8 @@ class PMD(object):
 
             for _ in range(iters):
                 Z1, Z2, X1, X2 = self._generate(sess, gen_dict)
-                X2, w          = self._align(X1, X2)
+                a, w           = self._align(X1, X2)
+                Z2             = Z2[a]
 
                 for t in range(self.mbs // self.optbs):
                     z1   = Z1[t*self.optbs : (t+1)*self.optbs]

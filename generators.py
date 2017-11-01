@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib import layers
 from utils import reuse
 
-def get_generator(arch, n_x, n_xl, n_channels, ngf):
+def get_generator(arch, n_x, n_xl, n_channels, n_z, ngf):
     if arch == 'fc':
         @reuse('transformation')
         def generator(z_ph, n_x, normalizer_params):

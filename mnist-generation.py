@@ -99,7 +99,8 @@ class MyPMD(PMD):
             return
         _, _, x_gen, x_real = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
                                              noise2=lambda: self.X_test)
-        x_gen, match_result = self._align(x_real, x_gen)
+        a, match_result     = self._align(x_real, x_gen)
+        x_gen               = x_gen[a]
         if FLAGS.arch == 'ae':
             x_real = self.ae.decode(x_real, sess)
             x_gen  = self.ae.decode(x_gen,  sess)
@@ -113,7 +114,8 @@ class MyPMD(PMD):
         utils.save_image_collections(x_gen,      name, scale_each=True, shape=(Fx, Fy//2))
 
         name = '{}/small_images_{}_{}.jpg'.format(self.run_name, epoch, match_result)
-        utils.save_image_collections(x_gen[:50], name, scale_each=True, shape=(5, 10))
+        utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
+                                     name, scale_each=True, shape=(5, 10))
 
         print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(epoch, 0, 0, 0, 0, match_result, loss))
 
@@ -137,7 +139,7 @@ def main(argv=None):
     n         = x_train.shape[0]
 
     # Make some data
-    generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, ngf)
+    generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, n_z, ngf)
 
     # Define training/evaluation parameters
     run_name = 'results/{}_{}_{}_{}_c{}_m{}_o{}_lr{}_t0{}_s'.format(
