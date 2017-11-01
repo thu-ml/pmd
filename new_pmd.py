@@ -77,10 +77,12 @@ class PMD(object):
             info.time_align = 0
             info.time_opt   = 0
 
-            for _ in range(iters):
+            for it in range(iters):
                 t = time.time()
                 Z1, Z2, X1, X2 = self._generate(sess, gen_dict)
                 info.time_gen += time.time() - t
+                if X1.shape != X2.shape:
+                    continue
 
                 t = time.time()
                 a, w           = self._align(X1, X2)

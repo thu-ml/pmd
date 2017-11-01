@@ -6,6 +6,7 @@ from skimage.exposure import rescale_intensity
 from six.moves import range
 import os
 import dataset
+import time
 
 
 def makedirs(filename):
@@ -90,24 +91,25 @@ def load_image_data(data, n_xl, n_channels, output_batch_size):
         print('Reading svhn...')
         time_read = -time.time()
         print('Train')
-        x_train = np.load('svhn_train1_x.npy')
-        y_train = np.load('svhn_train1_y.npy')
+        x_train = np.load('data/svhn_train1_x.npy')
+        y_train = np.load('data/svhn_train1_y.npy')
         print('Test')
-        x_test = np.load('svhn_test_x.npy')
-        y_test = np.load('svhn_test_y.npy')
+        x_test = np.load('data/svhn_test_x.npy')
+        y_test = np.load('data/svhn_test_y.npy')
         time_read += time.time()
         print('Finished in {:.4f} seconds'.format(time_read))
 
         x_train2 = x_train[:output_batch_size]
         y_train2 = y_train[:output_batch_size]
-        y_train2 = np.nonzero(y_train2)[1]
         order = np.argsort(y_train2)
         sorted_x_train = x_train2[order]
     else:
         # Load LFW data
         print('Reading lfw...')
         time_read = -time.time()
-        x_train = np.reshape(np.load('lfw.npy').astype(np.float32), [-1, n_xl, n_xl, n_channels])
+        x_train = np.load('data/lfw.npy').astype(np.float32)
+        print(x_train.shape)
+        x_train = np.reshape(x_train, [-1, n_xl, n_xl, n_channels])
         time_read += time.time()
         print('Finished in {:.4f} seconds'.format(time_read))
 

@@ -31,40 +31,59 @@ class ConvAE:
         normalizer_params = {'is_training': self.is_training,
                              'updates_collections': None}
  
-        @reuse('encoder')
-        def encoder(x):
-            print('Encoder ', x.get_shape())
-            h = layers.conv2d(x, ngf, 5, stride=2, 
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d(h, ngf*2, 5, stride=2,
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d(h, ngf*4, 5, padding='VALID',
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d(h, FLAGS.n_code, 3, padding='VALID',
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            return layers.flatten(h)
+        if FLAGS.dataset == 'mnist':
+            @reuse('encoder')
+            def encoder(x):
+                print('Encoder ', x.get_shape())
+                h = layers.conv2d(x, ngf, 5, stride=2, 
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d(h, ngf*2, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d(h, ngf*4, 5, padding='VALID',
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d(h, FLAGS.n_code, 3, padding='VALID',
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                return layers.flatten(h)
 
-        @reuse('decoder')
-        def decoder(z):
-            h = tf.reshape(z, [-1, 1, 1, FLAGS.n_code])
-            print('Decoder ', h.get_shape())
-            h = layers.conv2d_transpose(h, ngf*4, 3, padding='VALID',
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d_transpose(h, ngf*2, 5, padding='VALID',
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d_transpose(h, ngf, 5, stride=2,
-                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            print(h.get_shape())
-            h = layers.conv2d_transpose(h, 1, 5, stride=2,
-                    activation_fn=tf.nn.sigmoid)
-            print('Output: ', h.get_shape())
-            return h
+            @reuse('decoder')
+            def decoder(z):
+                h = tf.reshape(z, [-1, 1, 1, FLAGS.n_code])
+                h = layers.conv2d_transpose(h, ngf*4, 3, padding='VALID',
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d_transpose(h, ngf*2, 5, padding='VALID',
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d_transpose(h, ngf, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d_transpose(h, 1, 5, stride=2,
+                        activation_fn=tf.nn.sigmoid)
+                return h
+        else:
+            @reuse('encoder')
+            def encoder(x):
+                h = layers.conv2d(x, ngf*2, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d(h, ngf*4, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d(h, ngf*8, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.flatten(h)
+                h = layers.fully_connected(h, FLAGS.n_code,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                return h
+
+            @reuse('decoder')
+            def decoder(z):
+                h = layers.fully_connected(z, num_outputs=ngf*8*4*4,
+                                           normalizer_fn=layers.batch_norm,
+                                           normalizer_params=normalizer_params)
+                h = tf.reshape(h, [-1, 4, 4, ngf*8])
+                h = layers.conv2d_transpose(h, ngf*4, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                h = layers.conv2d_transpose(h, ngf*2, 5, stride=2,
+                        normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+                x = layers.conv2d_transpose(h, self.xshape[-1], 5, stride=2, activation_fn=tf.nn.sigmoid)
+                return x
+
 
         self.encoder = encoder
         self.decoder = decoder

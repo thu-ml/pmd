@@ -94,7 +94,7 @@ def my_distance(dist, arch, bw, x, y):
     elif dist == 'l2':
         matched_obj = l2(x, y)
     else:
-        if arch != 'ae': # TODO
+        if arch != 'ae':
             matched_obj = tf.sqrt(mmd(x, y, 1) + 
                                   mmd(x, y, 1.5) + 
                                   mmd(x, y, 2.5) + 

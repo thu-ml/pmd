@@ -45,9 +45,13 @@ if FLAGS.dataset == 'mnist':
     n_xl       = 28
     n_channels = 1
     ngf        = 32
-else:
+elif FLAGS.dataset == 'svhn':
     n_xl       = 32
     n_channels = 3
+    ngf        = 64
+else:
+    n_xl       = 32
+    n_channels = 1
     ngf        = 64
 
 n_z    = 40
@@ -113,9 +117,10 @@ def main(argv=None):
     x_train, sorted_x_train = \
             utils.load_image_data(FLAGS.dataset, n_xl, n_channels, FLAGS.mbs)
     xshape = (-1, n_xl, n_xl, n_channels)
+    print(x_train.shape)
 
     # Make some data
-    is_training, generator = get_generator(FLAGS.arch, 
+    is_training, generator = get_generator(FLAGS.dataset, FLAGS.arch, 
                                            n_code if FLAGS.arch=='ae' else n_x, 
                                            n_xl, n_channels, n_z, ngf)
 
@@ -153,7 +158,7 @@ def main(argv=None):
         print('Training...')
         model.train(sess, gen_dict={model.batch_size_ph: FLAGS.mbs, is_training: False},
                           opt_dict={model.batch_size_ph: FLAGS.bs,  is_training: True},
-                          iters=x_train.shape[0]//FLAGS.mbs)
+                          iters=((x_train.shape[0]-1)//FLAGS.mbs)+1)
 
 if __name__ == "__main__":
     tf.app.run()
