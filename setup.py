@@ -1,6 +1,6 @@
 import os
 from os.path import join as pjoin
-from setuptools import setup
+from setuptools import setup, find_packages
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import subprocess
@@ -99,7 +99,7 @@ class custom_build_ext(build_ext):
         build_ext.build_extensions(self)
 
 ext = Extension('approxla',
-                sources=['pairwise_l1.cu', 'approxla.cu', 'utils.cpp', 'hungarian.cpp', 'auction.cpp', '_approxla.pyx', 'network_flow.cpp'],
+                sources=['pmd/pairwise_l1.cu', 'pmd/approxla.cu', 'pmd/utils.cpp', 'pmd/hungarian.cpp', 'pmd/auction.cpp', 'pmd/_approxla.pyx', 'pmd/network_flow.cpp'],
                 library_dirs=[CUDA['lib64']],
                 libraries=['cudart'],
                 language='c++',
@@ -108,12 +108,17 @@ ext = Extension('approxla',
                 # we're only going to use certain compiler args with nvcc and not with gcc
                 # the implementation of this trick is in customize_compiler() below
                 extra_compile_args={'gcc': ["-std=c++11", '-O3'],
-                                    'nvcc': ['-arch=sm_52', '-std=c++11', '--ptxas-options=-v', '-c', '--compiler-options', "'-fPIC'", '-O3']},
+                                    'nvcc': ['-arch=sm_52', '-std=c++11', '--ptxas-options=-v', 
+                                             '-c', '--compiler-options', "'-fPIC'", '-O3']},
                 include_dirs = [numpy_include, CUDA['include'], 'src'])
 
 
 
-setup(name='approxla',
+setup(name='pmd',
       ext_modules = [ext],
       cmdclass={'build_ext': custom_build_ext},
+      packages=find_packages('.'),
       zip_safe=False)
+
+print(find_packages('.'))
+
