@@ -3,8 +3,12 @@ from tensorflow.contrib import layers
 from assignments import get_assignments
 from distances   import my_distance, pw_l1, pw_l2
 import numpy as np
+import time
 
 FLAGS = tf.app.flags.FLAGS
+
+class PMDInfo(object):
+    pass
 
 class PMD(object):
     def __init__(self, noise1, noise2, ns1, ns2, T1, T2):
@@ -72,11 +76,22 @@ class PMD(object):
             losses = []
             learning_rate = FLAGS.lr0 * FLAGS.t0 / (FLAGS.t0 + epoch)
 
+            info = PMDInfo()
+            info.time_gen   = 0
+            info.time_align = 0
+            info.time_opt   = 0
+
             for _ in range(iters):
+                t = time.time()
                 Z1, Z2, X1, X2 = self._generate(sess, gen_dict)
+                info.time_gen += time.time() - t
+
+                t = time.time()
                 a, w           = self._align(X1, X2)
                 Z2             = Z2[a]
+                info.time_align += time.time() - t
 
+                t0 = time.time()
                 for t in range(self.mbs // self.optbs):
                     z1   = Z1[t*self.optbs : (t+1)*self.optbs]
                     z2   = Z2[t*self.optbs : (t+1)*self.optbs]
@@ -86,8 +101,12 @@ class PMD(object):
 
                     _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
                     losses.append(l)
+                info.time_opt += time.time() - t0
+                info.time      = info.time_gen + info.time_align + info.time_opt
+                info.epoch     = epoch
+                info.loss      = np.mean(losses)
 
-            self._callback(sess, epoch, np.mean(losses))
+            self._callback(sess, info)
 
     def _callback(self):
         pass

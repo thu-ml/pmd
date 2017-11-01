@@ -80,8 +80,8 @@ class MyPMD(PMD):
                                     (None, n_z), ns2, 
                                     generator, lambda x: x)
 
-    def _callback(self, sess, epoch, loss):
-        if epoch % FLAGS.lag != 0:
+    def _callback(self, sess, info):
+        if info.epoch % FLAGS.lag != 0:
             return
         _, _, x_gen, x_real = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
                                              noise2=lambda: self.X_test)
@@ -93,17 +93,17 @@ class MyPMD(PMD):
 
         # Interweave the imgs
         all_imgs = np.reshape(np.hstack((x_real, x_gen)), self.xshape)
-        name = '{}/outfile_{}_{}.jpg'.format(self.run_name, epoch, match_result)
+        name = '{}/outfile_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
         utils.save_image_collections(all_imgs,   name, scale_each=True, shape=(Fx, Fy))
 
-        name = '{}/images_{}_{}.jpg'.format(self.run_name, epoch, match_result)
+        name = '{}/images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
         utils.save_image_collections(x_gen,      name, scale_each=True, shape=(Fx, Fy//2))
 
-        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, epoch, match_result)
+        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
         utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
                                      name, scale_each=True, shape=(5, 10))
 
-        print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(epoch, 0, 0, 0, 0, match_result, loss))
+        print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, match_result, info.loss))
 
 
 def main(argv=None):
