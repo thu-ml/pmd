@@ -115,3 +115,16 @@ def load_image_data(data, n_xl, n_channels, output_batch_size):
 
     return x_train, sorted_x_train
 
+
+class Batches:
+    def __init__(self, X, batch_size):
+        self.X     = X
+        self.start = 0
+        self.batch_size = batch_size
+
+    def _call(self):
+        ret = self.X[self.start:self.start+self.batch_size]
+        self.start = min(self.start+self.batch_size, self.X.shape[0])
+        if self.start == self.X.shape[0]:
+            self.start = 0
+        return ret

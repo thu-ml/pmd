@@ -17,7 +17,7 @@ from scipy.optimize import linear_sum_assignment
 from assignments import lsa, approx_lsa, assignments, sparse_lsa, get_assignments
 import distances
 from ae import ConvAE
-from utils import reuse
+from utils import reuse, Batches
 from generators import get_generator
 from new_pmd import PMD
 
@@ -58,20 +58,6 @@ n_ix   = 20
 n_iy   = 20
 Fy     = 80
 Fx     = FLAGS.mbs * 2 // Fy
-
-
-class Batches:
-    def __init__(self, X, batch_size):
-        self.X     = X
-        self.start = 0
-        self.batch_size = batch_size
-
-    def _call(self):
-        ret = self.X[self.start:self.start+self.batch_size]
-        self.start = min(self.start+self.batch_size, self.X.shape[0])
-        if self.start == self.X.shape[0]:
-            self.start = 0
-        return ret
 
 
 class MyPMD(PMD):
@@ -123,28 +109,19 @@ class MyPMD(PMD):
 def main(argv=None):
     tf.set_random_seed(1237)
     np.random.seed(1237)
-    dist                = FLAGS.dist
-    epoches             = FLAGS.epoches
-    output_batch_size   = FLAGS.bs
-    match_batch_size    = FLAGS.bs
-    optimize_batch_size = match_batch_size if FLAGS.dist=='mmd' else FLAGS.obs
-    learning_rate       = FLAGS.lr0
 
     # Load data
     x_train, sorted_x_train = \
-            utils.load_image_data(FLAGS.dataset, n_xl, n_channels, output_batch_size)
-
-    xshape    = list(x_train.shape)
-    xshape[0] = -1
-    n         = x_train.shape[0]
+            utils.load_image_data(FLAGS.dataset, n_xl, n_channels, FLAGS.bs)
+    xshape = (-1, n_xl, n_xl, n_channels)
 
     # Make some data
     generator = get_generator(FLAGS.arch, n_x, n_xl, n_channels, n_z, ngf)
 
     # Define training/evaluation parameters
-    run_name = 'results/{}_{}_{}_{}_c{}_m{}_o{}_lr{}_t0{}_s'.format(
-        FLAGS.dataset, FLAGS.arch, dist, FLAGS.match, n_code, 
-        match_batch_size, optimize_batch_size, learning_rate, FLAGS.t0)
+    run_name = 'results/{}_{}_{}_{}_c{}_mbs{}_bs{}_lr{}_t0{}'.format(
+        FLAGS.dataset, FLAGS.arch, FLAGS.dist, FLAGS.match, n_code, 
+        FLAGS.mbs, FLAGS.bs, FLAGS.lr0, FLAGS.t0)
 
     if not os.path.exists(run_name):
         os.mkdir(run_name)
@@ -179,7 +156,7 @@ def main(argv=None):
         print('Training...')
         model.train(sess, gen_dict={model.batch_size_ph: FLAGS.mbs, is_training: False},
                           opt_dict={model.batch_size_ph: FLAGS.bs,  is_training: True},
-                    iters=n//FLAGS.mbs)
+                    iters=x_train.shape[0]//FLAGS.mbs)
 
 if __name__ == "__main__":
     tf.app.run()
