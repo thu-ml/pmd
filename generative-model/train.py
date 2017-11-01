@@ -14,12 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import scipy.misc
 import utils
 from scipy.optimize import linear_sum_assignment
-from assignments import lsa, approx_lsa, assignments, sparse_lsa, get_assignments
-import distances
 from ae import ConvAE
 from utils import reuse, Batches
 from generators import get_generator
-from new_pmd import PMD
+from pmd import PMD
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('dataset', 'mnist', 'mnist, svhn or lfw')
