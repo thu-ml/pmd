@@ -2,8 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib import layers
 from utils import reuse
 
-def get_generator(dataset, arch, n_x, n_xl, n_channels, n_z, ngf):
-    is_training = tf.placeholder_with_default(False, shape=[], name='is_training')
+def get_generator(dataset, arch, n_x, n_xl, n_channels, n_z, ngf, is_training):
     normalizer_params = {'is_training': is_training,
                          'updates_collections': None,
                          'decay': 0.9}
@@ -16,7 +15,7 @@ def get_generator(dataset, arch, n_x, n_xl, n_channels, n_z, ngf):
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
             x = layers.fully_connected(h, n_x, activation_fn=tf.nn.sigmoid)
             return tf.reshape(x, [-1, n_xl, n_xl, n_channels])
-    elif arch == 'conv':
+    elif arch == 'conv' or arch == 'adv':
         if dataset=='mnist':
             @reuse('transformation')
             def generator(z_ph):
@@ -52,4 +51,4 @@ def get_generator(dataset, arch, n_x, n_xl, n_channels, n_z, ngf):
             x = layers.fully_connected(h, n_x)  # TODO sigmoid?
             return x
 
-    return is_training, generator
+    return generator

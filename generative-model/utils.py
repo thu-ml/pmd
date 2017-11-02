@@ -103,7 +103,7 @@ def load_image_data(data, n_xl, n_channels, output_batch_size):
         y_train2 = y_train[:output_batch_size]
         order = np.argsort(y_train2)
         sorted_x_train = x_train2[order]
-    else:
+    elif data == 'lfw':
         # Load LFW data
         print('Reading lfw...')
         time_read = -time.time()
@@ -114,6 +114,18 @@ def load_image_data(data, n_xl, n_channels, output_batch_size):
         print('Finished in {:.4f} seconds'.format(time_read))
 
         sorted_x_train = x_train[:output_batch_size]
+    else:
+        x_train, t_train, x_test, t_test = \
+            dataset.load_cifar10('data/cifar10/cifar-10-python.tar.gz', normalize=True, one_hot=True)
+        x = np.vstack((x_train, x_test))
+        t = np.vstack((t_train, t_test))
+
+        x2 = x[:output_batch_size]
+        t2 = np.argmax(t[:output_batch_size], 1)
+        order = np.argsort(t2)
+
+        x_train = x
+        sorted_x_train = x2[order]
 
     return x_train, sorted_x_train
 
