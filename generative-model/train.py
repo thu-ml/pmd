@@ -87,8 +87,8 @@ class MyPMD(PMDGAN):
     def _callback(self, sess, info):
         if info.epoch % FLAGS.lag != 0:
             return
-        _, _, x_gen, x_real, _, _ = self._generate2(sess, {self.batch_size_ph: FLAGS.mbs},
-                                             noise2=lambda: self.X_test)
+        x_real = self.X_test
+        x_gen  = self._generate1(sess, {self.batch_size_ph: FLAGS.mbs})
         match_result = 0
         #a, match_result     = self._align(x_real, x_gen)
         #x_gen               = x_gen[a]
@@ -111,6 +111,12 @@ class MyPMD(PMDGAN):
         print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, match_result, info.loss))
         print(info.reg)
         print(info.gp)
+        images = []
+        for i in range(10):
+            images.append(self._generate1(sess, {self.batch_size_ph: 100}))
+        images = np.concatenate(images, axis=0)
+        images = list((images*128+128).astype(np.int32))
+        print('Inception score = {}'.format(get_inception_score(images)))
 
 
 def main(argv=None):
