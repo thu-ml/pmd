@@ -49,7 +49,7 @@ def pairwise_rbf_kernel(X, Y, bandwidth):
     xx = tf.reduce_sum(tf.square(X), -1)
     yy = tf.reduce_sum(tf.square(Y), -1)
     D = tf.expand_dims(xx, 1) + tf.expand_dims(yy, 0) - 2 * xy
-    K = tf.exp(-D / (bandwidth*2))
+    K = tf.exp(-D / (2 * bandwidth**2))
     return K
 
 
@@ -94,7 +94,14 @@ def my_distance(dist, arch, bw, x, y):
     elif dist == 'l2':
         matched_obj = l2(x, y)
     else:
-        if arch != 'ae':
+        if arch == 'adv':
+            print('Using adversarial obj')
+            matched_obj = tf.sqrt(mmd(x, y, 1) + 
+                                  mmd(x, y, 2) +
+                                  mmd(x, y, 4) + 
+                                  mmd(x, y, 8) + 
+                                  mmd(x, y, 16))
+        elif arch != 'ae':
             matched_obj = tf.sqrt(mmd(x, y, 1) + 
                                   mmd(x, y, 1.5) + 
                                   mmd(x, y, 2.5) + 

@@ -18,7 +18,7 @@ from ae import ConvAE
 from utils import reuse, Batches
 from generators import get_generator
 from discriminators import get_discriminator
-from pmd import PMD, GAN
+from pmd import PMD, GAN, PMDGAN
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('dataset', 'mnist', 'mnist, svhn or lfw')
@@ -54,8 +54,8 @@ else:
     n_channels = 3
     ngf        = 64
 
-n_z    = 40
-n_f    = 1
+n_z    = 128
+n_f    = 128
 n_code = FLAGS.n_code
 n_x    = n_xl * n_xl * n_channels
 n_ix   = 20
@@ -64,8 +64,8 @@ Fy     = 80
 Fx     = FLAGS.mbs * 2 // Fy
 
 
-class MyPMD(GAN):
-    def __init__(self, X, X_test, xshape, generator, run_name, ae=None, reg=None, F=None):
+class MyPMD(PMDGAN):
+    def __init__(self, X, X_test, xshape, generator, run_name, ae=None, reg=None, F=None, D=None):
         self.X      = X
         self.X_test = X_test
         self.xshape = xshape
@@ -82,14 +82,14 @@ class MyPMD(GAN):
         ns2[0] = None
         super(MyPMD, self).__init__(self.noise1, self.noise2, 
                                     (None, n_z), ns2, 
-                                    generator, lambda x: x, reg, F)
+                                    generator, lambda x: x, reg, F, D)
 
     def _callback(self, sess, info):
         if info.epoch % FLAGS.lag != 0:
             return
-        _, _, x_gen, x_real, _, _ = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
-                                             noise2=lambda: self.X_test)
-        match_result = 0
+        #_, _, x_gen, x_real, _, _ = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
+        #                                     noise2=lambda: self.X_test)
+        #match_result = 0
         #a, match_result     = self._align(x_real, x_gen)
         #x_gen               = x_gen[a]
         #if FLAGS.arch == 'ae':
@@ -104,11 +104,12 @@ class MyPMD(GAN):
         #name = '{}/images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
         #utils.save_image_collections(x_gen,      name, scale_each=True, shape=(Fx, Fy//2))
 
-        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
-        utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
-                                     name, scale_each=True, shape=(5, 10))
-
+#        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
+#        utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
+#                                     name, scale_each=True, shape=(5, 10))
+#
         print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, match_result, info.loss))
+        print(info.reg)
 
 
 def main(argv=None):
@@ -121,14 +122,18 @@ def main(argv=None):
     xshape = (-1, n_xl, n_xl, n_channels)
     print(x_train.shape)
 
+    x_train = x_train*2 - 1
+
     # Make some data
     is_training = tf.placeholder_with_default(False, shape=[], name='is_training')
     generator = get_generator(FLAGS.dataset, FLAGS.arch, 
                                            n_code if FLAGS.arch=='ae' else n_x, 
-                                           n_xl, n_channels, n_z, ngf, is_training)
+                                           n_xl, n_channels, n_z, ngf, is_training, 'transformation')
     if FLAGS.arch == 'adv':
         discriminator = get_discriminator(FLAGS.dataset, FLAGS.arch,
                                           n_x, n_xl, n_channels, n_f, ngf//2, is_training)
+        decoder       = get_generator(FLAGS.dataset, FLAGS.arch, 
+                                      n_x, n_xl, n_channels, n_f, ngf, is_training, 'decoder')
 
     # Define training/evaluation parameters
     run_name = 'results/{}_{}_{}_{}_c{}_mbs{}_bs{}_lr{}_t0{}'.format(
@@ -152,7 +157,7 @@ def main(argv=None):
                       generator, run_name, ae)
     elif FLAGS.arch == 'adv':
         model = MyPMD(x_train, sorted_x_train, xshape,
-                      generator, run_name, reg=FLAGS.reg, F=discriminator)
+                      generator, run_name, reg=FLAGS.reg, F=discriminator, D=decoder)
     else:
         model = MyPMD(x_train, sorted_x_train, xshape,
                       generator, run_name)

@@ -11,7 +11,7 @@ class PMDInfo(object):
     pass
 
 class PMD(object):
-    def __init__(self, noise1, noise2, ns1, ns2, T1, T2, reg=None, F=None):
+    def __init__(self, noise1, noise2, ns1, ns2, T1, T2, reg=None, F=None, D=None):
         self.noise1 = noise1
         self.noise2 = noise2
         self.T1     = T1
@@ -28,6 +28,7 @@ class PMD(object):
             self.F1, self.F2 = self.X1, self.X2
         else:
             self.F1, self.F2 = F(self.X1), F(self.X2)
+            self.R1, self.R2 = D(self.F1), D(self.F2)
 
         self.matched_obj = my_distance(FLAGS.dist, FLAGS.arch, FLAGS.bw, 
                                        layers.flatten(self.F1), layers.flatten(self.F2))
@@ -45,22 +46,34 @@ class PMD(object):
         if reg is None:
             self.optimizer = tf.train.AdamOptimizer(self.learning_rate_ph)
         else:
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate_ph, beta1=0.5, beta2=0.9)
+            self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate_ph)
         self.train_op  = self.optimizer.minimize(self.matched_obj, var_list=trans_vars)
 
         # Adversarial learning of features
         if reg is not None:
-            alpha        = tf.random_uniform(tf.stack([tf.shape(self.X1)[0], 1, 1, 1]),
-                                             minval=0., maxval=1.)
-            differences  = self.X2 - self.X1
-            interpolates = self.X1 + differences * alpha
-            gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
-            slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
-            self.gp      = reg * tf.reduce_mean(tf.square(slopes-1))
-            disc_cost    = -self.matched_obj + self.gp
-            feat_vars    = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                           scope='discriminator')
-            self.feat_op = self.optimizer.minimize(disc_cost, var_list=feat_vars)
+            #alpha        = tf.random_uniform(tf.stack([tf.shape(self.X1)[0], 1, 1, 1]),
+            #                                 minval=0., maxval=1.)
+            #differences  = self.X2 - self.X1
+            #interpolates = self.X1 + differences * alpha
+            #gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
+            #slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
+            #self.gp      = reg * tf.reduce_mean(tf.square(slopes-1))
+
+            l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
+            self.r_loss  = 8 * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
+                                l2_loss(layers.flatten(self.R2 - self.X2)))
+            disc_cost    = -self.matched_obj + self.r_loss
+            disc_vars    = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                           scope='discriminator') 
+            dec_vars     = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                           scope='decoder') 
+            print('Feature variables:')
+            for i in disc_vars+dec_vars:
+                print(i.name, i.get_shape())
+                           
+            self.feat_op = self.optimizer.minimize(disc_cost, var_list=disc_vars+dec_vars)
+            self.clip_op = tf.group(*[var.assign(tf.clip_by_value(var, -0.01, 0.01)) for var
+                                      in disc_vars])
 
     def _generate(self, sess, dict, noise1=None, noise2=None):
         n2n = noise2 is not None
@@ -94,12 +107,15 @@ class PMD(object):
     def train(self, sess, gen_dict, opt_dict, iters):
         for epoch in range(1, FLAGS.epoches+1):
             losses = []
+            regs   = []
             learning_rate = FLAGS.lr0 * FLAGS.t0 / (FLAGS.t0 + epoch)
 
             info = PMDInfo()
             info.time_gen   = 0
             info.time_align = 0
             info.time_opt   = 0
+
+            interval = 101 if epoch<=4 else 6
 
             cnt = 0
             for it in range(iters):
@@ -123,18 +139,23 @@ class PMD(object):
                             self.learning_rate_ph: learning_rate}
                     f.update(opt_dict)
 
-                    if cnt % 6 == 0 or self.reg is None:
+                    sess.run(self.clip_op)
+
+                    if cnt % interval == 0 or self.reg is None:
                         _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
-                        print(l)
+                        #print(l)
                         losses.append(l)
                     else:
-                        _, lr, l = sess.run([self.feat_op, self.gp, self.matched_obj], feed_dict=f)
-                        print(lr, l)
+                        _, l, reg = sess.run([self.feat_op, self.matched_obj, self.r_loss], 
+                                             feed_dict=f)
+                        regs.append(reg)
+                        #print(l, reg)
 
                 info.time_opt += time.time() - t0
                 info.time      = info.time_gen + info.time_align + info.time_opt
                 info.epoch     = epoch
                 info.loss      = np.mean(losses)
+                info.reg       = np.mean(regs)
 
             self._callback(sess, info)
 
