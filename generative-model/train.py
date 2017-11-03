@@ -7,6 +7,7 @@ import time
 
 import tensorflow as tf
 from tensorflow.contrib import layers
+from model import get_inception_score
 from six.moves import range
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -112,7 +113,7 @@ class MyPMD(PMDGAN):
         print(info.reg)
         print(info.gp)
         images = []
-        for i in range(10):
+        for i in range(600 if info.epoch%100==0 else 10):
             images.append(self._generate1(sess, {self.batch_size_ph: 100}))
         images = np.concatenate(images, axis=0)
         images = list((images*128+128).astype(np.int32))

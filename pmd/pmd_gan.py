@@ -28,6 +28,8 @@ class PMDGAN(object):
 
         self.matched_obj = my_distance(FLAGS.dist, FLAGS.arch, FLAGS.bw, 
                                        layers.flatten(self.F1), layers.flatten(self.F2))
+        self.my_pw_distance = lambda x, y: (pw_l2(x, y) 
+                  if FLAGS.dist == 'l2' else pw_l1(x, y))
         l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
         self.r_loss  = 8 * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
                             l2_loss(layers.flatten(self.R2 - self.X2)))
@@ -79,24 +81,32 @@ class PMDGAN(object):
         Z1 = noise1() if callable(noise1) else sess.run(noise1, feed_dict=dict)
         Z2 = noise2() if callable(noise2) else sess.run(noise2, feed_dict=dict)
 
-        return Z1, Z2
-
-    def _generate2(self, sess, dict, noise1=None, noise2=None):
-        n2n = noise2 is not None
-        if noise1 is None:
-            noise1 = self.noise1
-        if noise2 is None:
-            noise2 = self.noise2
-
-        Z1 = noise1() if callable(noise1) else sess.run(noise1, feed_dict=dict)
-        Z2 = noise2() if callable(noise2) else sess.run(noise2, feed_dict=dict)
-
         feed_dict = {self.noise_ph_1: Z1,
                      self.noise_ph_2: Z2}
         feed_dict.update(dict)
         X1, X2, F1, F2 = sess.run([self.X1, self.X2, self.F1, self.F2], 
                                   feed_dict=feed_dict)
         return Z1, Z2, X1, X2, F1, F2
+
+    def _align(self, F1, F2):
+        flatten    = lambda x: np.reshape(x, [x.shape[0], -1])
+        obj_matrix = self.my_pw_distance(flatten(F1), flatten(F2))
+
+        if FLAGS.dist == 'mmd':
+            match_result = 0
+            a = np.arange(F1.shape[0])
+        else:
+            a, match_result = get_assignments(obj_matrix, FLAGS.match)
+
+        return a, match_result
+
+    def _generate1(self, sess, dict):
+        Z1 = self.noise1() if callable(self.noise1) else sess.run(self.noise1, feed_dict=dict)
+
+        feed_dict = {self.noise_ph_1: Z1}
+        feed_dict.update(dict)
+        X1 = sess.run(self.X1, feed_dict=feed_dict)
+        return X1
 
     def train(self, sess, gen_dict, opt_dict, iters):
         for epoch in range(1, FLAGS.epoches+1):
@@ -115,28 +125,34 @@ class PMDGAN(object):
             cnt = 0
             for it in range(iters):
                 t = time.time()
-                Z1, Z2 = self._generate(sess, gen_dict)
+                Z1, Z2, X1, X2, F1, F2 = self._generate(sess, gen_dict)
                 info.time_gen += time.time() - t
                 if Z1.shape[0] != Z2.shape[0]:
                     continue
 
+                t = time.time()
+                a, w           = self._align(F1, F2)
+                Z2             = Z2[a]
+                info.time_align += time.time() - t
+
                 t0 = time.time()
-                cnt += 1
-                f    = {self.noise_ph_1: Z1, self.noise_ph_2: Z2,
-                        self.learning_rate_ph: learning_rate}
-                f.update(opt_dict)
+                for t in range(FLAGS.mbs // FLAGS.bs):
+                    cnt += 1
+                    z1   = Z1[t*FLAGS.bs : (t+1)*FLAGS.bs]
+                    z2   = Z2[t*FLAGS.bs : (t+1)*FLAGS.bs]
+                    f    = {self.noise_ph_1: z1, self.noise_ph_2: z2,
+                            self.learning_rate_ph: learning_rate}
+                    f.update(opt_dict)
 
-                #sess.run(self.clip_op)
-
-                if cnt % interval == 0 or self.reg is None:
-                    _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
-                    print(l)
-                    losses.append(l)
-                else:
-                    _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
-                                         feed_dict=f)
-                    regs.append(reg)
-                    gps.append(gp)
+                    if cnt % interval == 0 or self.reg is None:
+                        _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
+                        losses.append(l)
+#print(l)
+                    else:
+                        _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
+                                             feed_dict=f)
+                        regs.append(reg)
+                        gps.append(gp)
                 info.time_opt += time.time() - t0
 
             #exit(0)
