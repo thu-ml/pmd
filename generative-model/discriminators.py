@@ -9,7 +9,6 @@ def LeakyReLU(x):
 
 def get_discriminator(dataset, arch, n_x, n_xl, n_channels, n_z, ndf, is_training):
     normalizer_params = {'is_training': is_training,
-                         'fused': True,
                          'decay': 0.9}
 
     if dataset == 'mnist':

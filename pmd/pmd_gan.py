@@ -31,7 +31,16 @@ class PMDGAN(object):
         l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
         self.r_loss  = 8 * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
                             l2_loss(layers.flatten(self.R2 - self.X2)))
-        disc_cost    = -self.matched_obj + self.r_loss
+
+        alpha        = tf.random_uniform(tf.stack([tf.shape(self.X1)[0], 1, 1, 1]),
+                                         minval=0., maxval=1.)
+        differences  = self.X2 - self.X1
+        interpolates = self.X1 + differences * alpha
+        gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
+        slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
+        self.gp      = reg * tf.reduce_mean(tf.square(slopes-1))
+
+        disc_cost    = -self.matched_obj + self.r_loss + self.gp
 
         # Output variables
         trans_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -51,7 +60,8 @@ class PMDGAN(object):
             print(i.name, i.get_shape())
 
         self.learning_rate_ph = tf.placeholder(tf.float32, shape=[], name='lr')
-        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate_ph)
+        #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate_ph)
+        self.optimizer = tf.train.AdamOptimizer(self.learning_rate_ph, beta1=0.5, beta2=0.9)
         self.train_op  = self.optimizer.minimize(self.matched_obj, var_list=trans_vars)
         self.feat_op = self.optimizer.minimize(disc_cost, var_list=disc_vars+dec_vars)
         self.clip_op = tf.group(*[var.assign(tf.clip_by_value(var, -0.01, 0.01)) for var
@@ -92,6 +102,7 @@ class PMDGAN(object):
         for epoch in range(1, FLAGS.epoches+1):
             losses = []
             regs   = []
+            gps    = []
             learning_rate = FLAGS.lr0 * FLAGS.t0 / (FLAGS.t0 + epoch)
 
             info = PMDInfo()
@@ -115,16 +126,17 @@ class PMDGAN(object):
                         self.learning_rate_ph: learning_rate}
                 f.update(opt_dict)
 
-                sess.run(self.clip_op)
+                #sess.run(self.clip_op)
 
                 if cnt % interval == 0 or self.reg is None:
                     _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
                     print(l)
                     losses.append(l)
                 else:
-                    _, l, reg = sess.run([self.feat_op, self.matched_obj, self.r_loss], 
+                    _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
                                          feed_dict=f)
                     regs.append(reg)
+                    gps.append(gp)
                 info.time_opt += time.time() - t0
 
             #exit(0)
@@ -132,6 +144,7 @@ class PMDGAN(object):
             info.epoch     = epoch
             info.loss      = np.mean(losses)
             info.reg       = np.mean(regs)
+            info.gp        = np.mean(gps)
 
             self._callback(sess, info)
 
