@@ -87,9 +87,9 @@ class MyPMD(PMDGAN):
     def _callback(self, sess, info):
         if info.epoch % FLAGS.lag != 0:
             return
-        #_, _, x_gen, x_real, _, _ = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
-        #                                     noise2=lambda: self.X_test)
-        #match_result = 0
+        _, _, x_gen, x_real, _, _ = self._generate(sess, {self.batch_size_ph: FLAGS.mbs},
+                                             noise2=lambda: self.X_test)
+        match_result = 0
         #a, match_result     = self._align(x_real, x_gen)
         #x_gen               = x_gen[a]
         #if FLAGS.arch == 'ae':
@@ -104,10 +104,10 @@ class MyPMD(PMDGAN):
         #name = '{}/images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
         #utils.save_image_collections(x_gen,      name, scale_each=True, shape=(Fx, Fy//2))
 
-#        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
-#        utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
-#                                     name, scale_each=True, shape=(5, 10))
-#
+        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
+        utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
+                                     name, scale_each=True, shape=(5, 10))
+
         print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, match_result, info.loss))
         print(info.reg)
 

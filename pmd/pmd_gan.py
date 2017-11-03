@@ -31,7 +31,7 @@ class PMDGAN(object):
         l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
         self.r_loss  = 8 * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
                             l2_loss(layers.flatten(self.R2 - self.X2)))
-        disc_cost    = -self.matched_obj #+ self.r_loss
+        disc_cost    = -self.matched_obj + self.r_loss
 
         # Output variables
         trans_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -71,6 +71,22 @@ class PMDGAN(object):
 
         return Z1, Z2
 
+    def _generate2(self, sess, dict, noise1=None, noise2=None):
+        n2n = noise2 is not None
+        if noise1 is None:
+            noise1 = self.noise1
+        if noise2 is None:
+            noise2 = self.noise2
+
+        Z1 = noise1() if callable(noise1) else sess.run(noise1, feed_dict=dict)
+        Z2 = noise2() if callable(noise2) else sess.run(noise2, feed_dict=dict)
+
+        feed_dict = {self.noise_ph_1: Z1,
+                     self.noise_ph_2: Z2}
+        feed_dict.update(dict)
+        X1, X2, F1, F2 = sess.run([self.X1, self.X2, self.F1, self.F2], 
+                                  feed_dict=feed_dict)
+        return Z1, Z2, X1, X2, F1, F2
 
     def train(self, sess, gen_dict, opt_dict, iters):
         for epoch in range(1, FLAGS.epoches+1):
@@ -105,17 +121,10 @@ class PMDGAN(object):
                     _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
                     print(l)
                     losses.append(l)
-
-                    f1, f2 = sess.run([self.F1, self.F2], feed_dict=f)
-                    print(np.square(f1-f2).sum(1))
-
-                    #for var in self.disc_vars:
-                    #    print(var.name, sess.run(var))
                 else:
                     _, l, reg = sess.run([self.feat_op, self.matched_obj, self.r_loss], 
                                          feed_dict=f)
                     regs.append(reg)
-                    #print(l, reg)
                 info.time_opt += time.time() - t0
 
             #exit(0)
