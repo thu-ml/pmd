@@ -93,23 +93,27 @@ def my_distance(dist, arch, bw, x, y):
         matched_obj = l1(x, y)
     elif dist == 'l2':
         matched_obj = l2(x, y)
+    elif dist == 'l1m':
+        matched_obj = tf.reduce_mean(tf.abs(x - y)) / 10
     else:
-        if arch == 'adv':
-            print('Using adversarial obj')
+        if arch != 'ae':
+        #    print('Using adversarial obj')
             matched_obj = tf.sqrt(mmd(x, y, 1) + 
                                   mmd(x, y, 2) +
                                   mmd(x, y, 4) + 
                                   mmd(x, y, 8) + 
-                                  mmd(x, y, 16))
-        elif arch != 'ae':
-            matched_obj = tf.sqrt(mmd(x, y, 1) + 
-                                  mmd(x, y, 1.5) + 
-                                  mmd(x, y, 2.5) + 
-                                  mmd(x, y, 3.2) + 
-                                  mmd(x, y, 4.5) + 
-                                  mmd(x, y, 6) + 
-                                  mmd(x, y, 10) +
-                                  mmd(x, y, 20)) / 8
+                                  mmd(x, y, 16) + 
+                                  mmd(x, y, 64) + 
+                                  mmd(x, y, 128))
+        #elif arch != 'ae':
+        #    matched_obj = tf.sqrt(mmd(x, y, 1) + 
+        #                          mmd(x, y, 2) + 
+        #                          mmd(x, y, 3) + 
+        #                          mmd(x, y, 4) + 
+        #                          mmd(x, y, 5) + 
+        #                          mmd(x, y, 6) + 
+        #                          mmd(x, y, 7) +
+        #                          mmd(x, y, 8)) / 8
         else:
             matched_obj = tf.sqrt(mmd(x, y, bw))
     return matched_obj

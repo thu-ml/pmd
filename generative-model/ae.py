@@ -20,7 +20,7 @@ class ConvAE:
         self.ae_name  = 'results/ae_{}_c{}_o{}_lr{}_t0{}'.format(
                    FLAGS.dataset, FLAGS.n_code, FLAGS.ae_bs, FLAGS.ae_lr0, FLAGS.ae_t0)
         if not os.path.exists(self.ae_name):
-            os.mkdir(self.ae_name)
+            os.makedirs(self.ae_name)
 
 
     def build(self):
@@ -55,7 +55,7 @@ class ConvAE:
                 h = layers.conv2d_transpose(h, ngf, 5, stride=2,
                         normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
                 h = layers.conv2d_transpose(h, 1, 5, stride=2,
-                        activation_fn=tf.nn.sigmoid)
+                        activation_fn=tf.nn.tanh)
                 return h
         else:
             @reuse('encoder')
@@ -81,7 +81,7 @@ class ConvAE:
                         normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
                 h = layers.conv2d_transpose(h, ngf*2, 5, stride=2,
                         normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-                x = layers.conv2d_transpose(h, self.xshape[-1], 5, stride=2, activation_fn=tf.nn.sigmoid)
+                x = layers.conv2d_transpose(h, self.xshape[-1], 5, stride=2, activation_fn=tf.nn.tanh)
                 return x
 
 

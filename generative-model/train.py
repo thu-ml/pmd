@@ -19,7 +19,7 @@ from ae import ConvAE
 from utils import reuse, Batches
 from generators import get_generator
 from discriminators import get_discriminator
-from pmd import PMD, GAN, PMDGAN
+from pmd import PMD, PMDGAN
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('dataset', 'mnist', 'mnist, svhn or lfw')
@@ -35,7 +35,10 @@ tf.app.flags.DEFINE_string('match', 'r', 'Matching algorithm: e(exact), r(random
 tf.app.flags.DEFINE_float('bw', 1, 'Bandwidth for MMD, only useful for arch=ae')
 tf.app.flags.DEFINE_float('reg', 10, 'regularization coefficient for WGAN-GP')
 
-tf.app.flags.DEFINE_integer('n_code', 40, 'Code dimension')
+tf.app.flags.DEFINE_integer('n_z', 40, 'Number of latent dims')
+tf.app.flags.DEFINE_integer('n_f', 128, 'Number of feature dims (only useful for arch=adv)')
+tf.app.flags.DEFINE_integer('n_code', 40, 'Number of AE code dims')
+
 tf.app.flags.DEFINE_integer('ae_bs', 100, 'Batch size for training autoencoder')
 tf.app.flags.DEFINE_integer('ae_epoches', 100, 'Number of epoches')
 tf.app.flags.DEFINE_float('ae_lr0', 3e-3, 'Maximal learning rate')
@@ -55,17 +58,13 @@ else:
     n_channels = 3
     ngf        = 64
 
-n_z    = 128
-n_f    = 128
+n_z    = FLAGS.n_z
+n_f    = FLAGS.n_f
 n_code = FLAGS.n_code
 n_x    = n_xl * n_xl * n_channels
-n_ix   = 20
-n_iy   = 20
-Fy     = 80
-Fx     = FLAGS.mbs * 2 // Fy
+BaseModel = PMD if FLAGS.arch != 'adv' else PMDGAN
 
-
-class MyPMD(PMDGAN):
+class MyPMD(BaseModel):
     def __init__(self, X, X_test, xshape, generator, run_name, ae=None, reg=None, F=None, D=None):
         self.X      = X
         self.X_test = X_test
@@ -89,35 +88,26 @@ class MyPMD(PMDGAN):
         if info.epoch % FLAGS.lag != 0:
             return
         x_real = self.X_test
-        x_gen  = self._generate1(sess, {self.batch_size_ph: FLAGS.mbs})
-        match_result = 0
-        #a, match_result     = self._align(x_real, x_gen)
-        #x_gen               = x_gen[a]
-        #if FLAGS.arch == 'ae':
-        #    x_real = self.ae.decode(x_real, sess)
-        #    x_gen  = self.ae.decode(x_gen,  sess)
+        x_gen  = self.generate1(sess, {self.batch_size_ph: FLAGS.mbs})
+        if FLAGS.arch == 'ae':
+            x_real = self.ae.decode(x_real, sess)
+            x_gen  = self.ae.decode(x_gen,  sess)
 
-        ## Interweave the imgs
-        #all_imgs = np.reshape(np.hstack((x_real, x_gen)), self.xshape)
-        #name = '{}/outfile_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
-        #utils.save_image_collections(all_imgs,   name, scale_each=True, shape=(Fx, Fy))
-
-        #name = '{}/images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
-        #utils.save_image_collections(x_gen,      name, scale_each=True, shape=(Fx, Fy//2))
-
-        name = '{}/small_images_{}_{}.jpg'.format(self.run_name, info.epoch, match_result)
+        name = '{}/small_images_{}.jpg'.format(self.run_name, info.epoch)
         utils.save_image_collections(x_gen[np.random.permutation(FLAGS.mbs)[:50]], 
                                      name, scale_each=True, shape=(5, 10))
+        print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, info.loss))
 
-        print('Epoch {} (total {:.1f}, dist {:.1f}, match {:.1f}, sgd {:.1f} s): approx W distance = {}, loss = {}'.format(info.epoch, info.time, info.time_gen, info.time_align, info.time_opt, match_result, info.loss))
-        print(info.reg)
-        print(info.gp)
-        images = []
-        for i in range(600 if info.epoch%100==0 else 10):
-            images.append(self._generate1(sess, {self.batch_size_ph: 100}))
-        images = np.concatenate(images, axis=0)
-        images = list((images*128+128).astype(np.int32))
-        print('Inception score = {}'.format(get_inception_score(images)))
+        if FLAGS.arch == 'adv':
+            print('AE loss = {}, GP = {}'.format(info.reg, info.gp))
+
+	if FLAGS.dataset == 'cifar':
+            images = []
+            for i in range(600 if info.epoch%100==0 else 10):
+                images.append(self.generate1(sess, {self.batch_size_ph: 100}))
+            images = np.concatenate(images, axis=0)
+            images = list((images*128+128).astype(np.int32))
+            print('Inception score = {}'.format(get_inception_score(images)))
 
 
 def main(argv=None):
@@ -128,9 +118,10 @@ def main(argv=None):
     x_train, sorted_x_train = \
             utils.load_image_data(FLAGS.dataset, n_xl, n_channels, FLAGS.mbs)
     xshape = (-1, n_xl, n_xl, n_channels)
-    print(x_train.shape)
+    print('Data shape = {}'.format(x_train.shape))
 
-    x_train = x_train*2 - 1
+    x_train        = x_train*2 - 1
+    sorted_x_train = sorted_x_train*2 - 1
 
     # Make some data
     is_training = tf.placeholder_with_default(False, shape=[], name='is_training')
@@ -149,10 +140,9 @@ def main(argv=None):
         FLAGS.mbs, FLAGS.bs, FLAGS.lr0, FLAGS.t0)
 
     if not os.path.exists(run_name):
-        os.mkdir(run_name)
+        os.makedirs(run_name)
 
     # Build the computation graph
-
     if FLAGS.arch == 'ae':
         ae = ConvAE(x_train, (None, n_xl, n_xl, n_channels), ngf)
         with tf.Session() as sess:

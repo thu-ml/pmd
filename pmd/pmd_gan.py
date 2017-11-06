@@ -11,13 +11,12 @@ class PMDInfo(object):
     pass
 
 class PMDGAN(object):
-    def __init__(self, noise1, noise2, ns1, ns2, T1, T2, reg, F, D):
+    def __init__(self, noise1, noise2, ns1, ns2, T1, T2, F, D):
         self.noise1 = noise1
         self.noise2 = noise2
         self.T1     = T1
         self.T2     = T2
         self.F      = F
-        self.reg    = reg
 
         self.noise_ph_1 = tf.placeholder(tf.float32, shape=ns1)
         self.noise_ph_2 = tf.placeholder(tf.float32, shape=ns2)
@@ -40,7 +39,7 @@ class PMDGAN(object):
         interpolates = self.X1 + differences * alpha
         gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
         slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
-        self.gp      = reg * tf.reduce_mean(tf.square(slopes-1))
+        self.gp      = FLAGS.reg * tf.reduce_mean(tf.square(slopes-1))
 
         disc_cost    = -self.matched_obj + self.r_loss + self.gp
 
@@ -72,14 +71,8 @@ class PMDGAN(object):
 
 
     def _generate(self, sess, dict, noise1=None, noise2=None):
-        n2n = noise2 is not None
-        if noise1 is None:
-            noise1 = self.noise1
-        if noise2 is None:
-            noise2 = self.noise2
-
-        Z1 = noise1() if callable(noise1) else sess.run(noise1, feed_dict=dict)
-        Z2 = noise2() if callable(noise2) else sess.run(noise2, feed_dict=dict)
+        Z1 = self.noise1() if callable(self.noise1) else sess.run(self.noise1, feed_dict=dict)
+        Z2 = self.noise2() if callable(self.noise2) else sess.run(self.noise2, feed_dict=dict)
 
         feed_dict = {self.noise_ph_1: Z1,
                      self.noise_ph_2: Z2}
@@ -100,7 +93,7 @@ class PMDGAN(object):
 
         return a, match_result
 
-    def _generate1(self, sess, dict):
+    def generate1(self, sess, dict):
         Z1 = self.noise1() if callable(self.noise1) else sess.run(self.noise1, feed_dict=dict)
 
         feed_dict = {self.noise_ph_1: Z1}
@@ -144,10 +137,10 @@ class PMDGAN(object):
                             self.learning_rate_ph: learning_rate}
                     f.update(opt_dict)
 
-                    if cnt % interval == 0 or self.reg is None:
+                    if cnt % interval == 0:
                         _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
                         losses.append(l)
-#print(l)
+                        #print(l)
                     else:
                         _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
                                              feed_dict=f)
@@ -155,7 +148,6 @@ class PMDGAN(object):
                         gps.append(gp)
                 info.time_opt += time.time() - t0
 
-            #exit(0)
             info.time      = info.time_gen + info.time_align + info.time_opt
             info.epoch     = epoch
             info.loss      = np.mean(losses)
