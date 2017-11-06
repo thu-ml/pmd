@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python train.py  --mbs 500 --bs 100

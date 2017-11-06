@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python train.py --arch ae --mbs 500 --bs 100 --lr0 1e-2

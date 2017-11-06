@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python train.py --arch=adv --lr0 1e-4

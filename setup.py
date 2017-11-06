@@ -118,6 +118,7 @@ setup(name='pmd',
       ext_modules = [ext],
       cmdclass={'build_ext': custom_build_ext},
       packages=find_packages('.'),
+      install_requirements=['tensorflow-gpu', 'scipy', 'matplotlib', 'seaborn', 'scikit-image'],
       zip_safe=False)
 
 print(find_packages('.'))

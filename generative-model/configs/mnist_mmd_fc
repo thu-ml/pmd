@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python train.py  --dist=mmd --mbs 1000 --bs 1000 --lr0 1e-3
