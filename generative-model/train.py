@@ -34,6 +34,7 @@ tf.app.flags.DEFINE_integer('mbs', 500, 'Match batch size')
 tf.app.flags.DEFINE_string('match', 'r', 'Matching algorithm: e(exact), r(randomized) or s(sparse)')
 tf.app.flags.DEFINE_float('bw', 1, 'Bandwidth for MMD, only useful for arch=ae')
 tf.app.flags.DEFINE_float('reg', 10, 'regularization coefficient for WGAN-GP')
+tf.app.flags.DEFINE_float('reg_r', 8, 'autoencoder reconstruction regularization coefficient')
 
 tf.app.flags.DEFINE_integer('n_z', 40, 'Number of latent dims')
 tf.app.flags.DEFINE_integer('n_f', 128, 'Number of feature dims (only useful for arch=adv)')
@@ -65,7 +66,7 @@ n_x    = n_xl * n_xl * n_channels
 BaseModel = PMD if FLAGS.arch != 'adv' else PMDGAN
 
 class MyPMD(BaseModel):
-    def __init__(self, X, X_test, xshape, generator, run_name, ae=None, reg=None, F=None, D=None):
+    def __init__(self, X, X_test, xshape, generator, run_name, ae=None, F=None, D=None):
         self.X      = X
         self.X_test = X_test
         self.xshape = xshape
@@ -82,7 +83,7 @@ class MyPMD(BaseModel):
         ns2[0] = None
         super(MyPMD, self).__init__(self.noise1, self.noise2, 
                                     (None, n_z), ns2, 
-                                    generator, lambda x: x, reg, F, D)
+                                    generator, lambda x: x, F, D)
 
     def _callback(self, sess, info):
         if info.epoch % FLAGS.lag != 0:
@@ -155,7 +156,7 @@ def main(argv=None):
                       generator, run_name, ae)
     elif FLAGS.arch == 'adv':
         model = MyPMD(x_train, sorted_x_train, xshape,
-                      generator, run_name, reg=FLAGS.reg, F=discriminator, D=decoder)
+                      generator, run_name, F=discriminator, D=decoder)
     else:
         model = MyPMD(x_train, sorted_x_train, xshape,
                       generator, run_name)

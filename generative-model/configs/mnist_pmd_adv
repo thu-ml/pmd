@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-python train.py --arch=adv --lr0 1e-4
+python train.py --arch=adv --lr0 1e-4 --t0 10000 --mbs 64 --bs 64 --epoches 1000 --dist l1m 

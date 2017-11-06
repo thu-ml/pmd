@@ -30,7 +30,7 @@ class PMDGAN(object):
         self.my_pw_distance = lambda x, y: (pw_l2(x, y) 
                   if FLAGS.dist == 'l2' else pw_l1(x, y))
         l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
-        self.r_loss  = 8 * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
+        self.r_loss  = FLAGS.reg_r * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
                             l2_loss(layers.flatten(self.R2 - self.X2)))
 
         alpha        = tf.random_uniform(tf.stack([tf.shape(self.X1)[0], 1, 1, 1]),
@@ -113,7 +113,8 @@ class PMDGAN(object):
             info.time_align = 0
             info.time_opt   = 0
 
-            interval = 101 if epoch<=4 else 6
+            #interval = 101 if epoch<=4 else 6
+            interval = 6
 
             cnt = 0
             for it in range(iters):
