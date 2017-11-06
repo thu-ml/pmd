@@ -69,5 +69,6 @@ def get_assignments(costs, method):
     rs, cs = solver(costs)
     a      = assignments(rs, cs)
     result = costs[rs, cs].mean()
+    print(costs[rs, cs])
     return a, result
     

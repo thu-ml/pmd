@@ -113,8 +113,8 @@ class PMDGAN(object):
             info.time_align = 0
             info.time_opt   = 0
 
-            #interval = 101 if epoch<=4 else 6
-            interval = 6
+            interval = 101 if epoch<=10 else 6
+            #interval = 6
 
             cnt = 0
             for it in range(iters):
@@ -145,6 +145,7 @@ class PMDGAN(object):
                     else:
                         _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
                                              feed_dict=f)
+                        print(l)
                         regs.append(reg)
                         gps.append(gp)
                 info.time_opt += time.time() - t0
