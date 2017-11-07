@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-python train.py --dataset cifar --arch=adv --lr0 1e-4 --t0 10000 --mbs 64 --bs 64 --epoches 1000 --dist l1m --reg 1 --reg_r 1 
+python train.py --dataset cifar --arch=adv --lr0 1e-4 --t0 10000 --mbs 512 --bs 64 --epoches 1000 --dist l1sqrt  --reg_r  8 --n_f 10

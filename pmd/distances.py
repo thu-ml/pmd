@@ -95,6 +95,8 @@ def my_distance(dist, arch, bw, x, y):
         matched_obj = l2(x, y)
     elif dist == 'l1m':
         matched_obj = tf.reduce_mean(tf.abs(x - y))
+    elif dist == 'l1sqrt':
+        matched_obj = tf.reduce_mean(tf.sqrt(tf.reduce_mean(tf.abs(x-y), -1)))
     elif dist == 'wgan':
         matched_obj = tf.reduce_mean(x-y)
     else:

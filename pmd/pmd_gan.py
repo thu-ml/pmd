@@ -27,21 +27,28 @@ class PMDGAN(object):
 
         self.matched_obj = my_distance(FLAGS.dist, FLAGS.arch, FLAGS.bw, 
                                        layers.flatten(self.F1), layers.flatten(self.F2))
-        self.my_pw_distance = lambda x, y: (pw_l2(x, y) 
-                  if FLAGS.dist == 'l2' else pw_l1(x, y))
+
+        def my_pw_distance(x, y):
+            if FLAGS.dist == 'l2':
+                return pw_l2(x, y)
+            if FLAGS.dist == 'l1sqrt':
+                return np.sqrt(pw_l1(x, y))
+            return pw_l1(x, y)
+        self.my_pw_distance = my_pw_distance
+            
         l2_loss      = lambda x: tf.reduce_mean(tf.square(x))
         self.r_loss  = FLAGS.reg_r * (l2_loss(layers.flatten(self.R1 - self.X1)) + 
                             l2_loss(layers.flatten(self.R2 - self.X2)))
 
         alpha        = tf.random_uniform(tf.stack([tf.shape(self.X1)[0], 1, 1, 1]),
                                          minval=0., maxval=1.)
-        differences  = self.X2 - self.X1
-        interpolates = self.X1 + differences * alpha
-        gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
-        slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
-        self.gp      = FLAGS.reg * tf.reduce_mean(tf.square(slopes-1))
+#        differences  = self.X2 - self.X1
+#        interpolates = self.X1 + differences * alpha
+#        gradients    = layers.flatten(tf.gradients(self.F(interpolates), [interpolates])[0])
+#        slopes       = tf.sqrt(tf.reduce_sum(tf.square(gradients), [-1]))
+#        self.gp      = FLAGS.reg * tf.reduce_mean(tf.square(slopes-1))
 
-        disc_cost    = -self.matched_obj + self.r_loss + self.gp
+        disc_cost    = -self.matched_obj + self.r_loss #+ self.gp
 
         # Output variables
         trans_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -61,9 +68,11 @@ class PMDGAN(object):
             print(i.name, i.get_shape())
 
         self.learning_rate_ph = tf.placeholder(tf.float32, shape=[], name='lr')
-        #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate_ph)
-        self.optimizer = tf.train.AdamOptimizer(self.learning_rate_ph, beta1=0.5, beta2=0.9)
+        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate_ph)
+        #self.optimizer = tf.train.AdamOptimizer(self.learning_rate_ph, beta1=0.5, beta2=0.9)
         self.train_op  = self.optimizer.minimize(self.matched_obj, var_list=trans_vars)
+        disc_grads   = tf.gradients(disc_cost, [disc_vars[0]])[0]
+        self.disc_grad_norm = tf.nn.l2_loss(disc_grads)
         self.feat_op = self.optimizer.minimize(disc_cost, var_list=disc_vars+dec_vars)
         self.clip_op = tf.group(*[var.assign(tf.clip_by_value(var, -0.01, 0.01)) for var
                                   in disc_vars])
@@ -84,6 +93,8 @@ class PMDGAN(object):
     def _align(self, F1, F2):
         flatten    = lambda x: np.reshape(x, [x.shape[0], -1])
         obj_matrix = self.my_pw_distance(flatten(F1), flatten(F2))
+        #print(F1.ravel())
+        #print(F2.ravel())
 
         if FLAGS.dist == 'mmd':
             match_result = 0
@@ -113,8 +124,8 @@ class PMDGAN(object):
             info.time_align = 0
             info.time_opt   = 0
 
-            interval = 101 if epoch<=10 else 6
-            #interval = 6
+            #interval = 101 if epoch<=10 else 6
+            interval = 6
 
             cnt = 0
             for it in range(iters):
@@ -138,16 +149,18 @@ class PMDGAN(object):
                             self.learning_rate_ph: learning_rate}
                     f.update(opt_dict)
 
+                    sess.run(self.clip_op)
+
                     if cnt % interval == 0:
                         _, l = sess.run([self.train_op, self.matched_obj], feed_dict=f)
                         losses.append(l)
                         #print(l)
                     else:
-                        _, l, reg, gp = sess.run([self.feat_op, self.matched_obj, self.r_loss, self.gp], 
+                        _, l, reg = sess.run([self.feat_op, self.matched_obj, self.r_loss], 
                                              feed_dict=f)
-                        print(l)
+                        #print(l)
                         regs.append(reg)
-                        gps.append(gp)
+                        gps.append(0)
                 info.time_opt += time.time() - t0
 
             info.time      = info.time_gen + info.time_align + info.time_opt
