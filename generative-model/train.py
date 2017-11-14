@@ -102,7 +102,7 @@ class MyPMD(BaseModel):
         if FLAGS.arch == 'adv':
             print('AE loss = {}, GP = {}'.format(info.reg, info.gp))
 
-	if FLAGS.dataset == 'cifar':
+        if FLAGS.dataset == 'cifar' and (info.epoch <= 50 or info.epoch%100==0):
             images = []
             for i in range(600 if info.epoch%100==0 else 10):
                 images.append(self.generate1(sess, {self.batch_size_ph: 100}))
