@@ -9,9 +9,15 @@ def get_generator(dataset, arch, n_x, n_xl, n_channels, n_z, ngf, is_training, n
     if arch == 'fc':
         @reuse(name)
         def generator(z_ph):
-            h = layers.fully_connected(z_ph, 500, 
+            h = layers.fully_connected(z_ph, 10, 
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
-            h = layers.fully_connected(h, 500, 
+            h = layers.fully_connected(z_ph, 64, 
+                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+            h = layers.fully_connected(h, 256, 
+                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+            h = layers.fully_connected(h, 256, 
+                    normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
+            h = layers.fully_connected(h, 1024, 
                     normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params)
             x = layers.fully_connected(h, n_x, activation_fn=tf.nn.tanh)
             return tf.reshape(x, [-1, n_xl, n_xl, n_channels])

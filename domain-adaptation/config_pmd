@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+python da_office.py --src 0 --tar 1 --dist l1n --reg 0.3 
+python da_office.py --src 0 --tar 2 --dist l1n --reg 1
+python da_office.py --src 1 --tar 0 --dist l1n --reg 0.03
+python da_office.py --src 1 --tar 2 --dist l1n --reg 0.003
+python da_office.py --src 2 --tar 0 --dist l1n --reg 0.1
+python da_office.py --src 2 --tar 1 --dist l1n --reg 0.0003

@@ -15,7 +15,7 @@ import sklearn
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import cross_val_score
 from sklearn.manifold import TSNE
-from pmd import PMD
+from pmd import PMD_DA as PMD
 import seaborn as sns
 from batch_generator import BatchGenerator
 

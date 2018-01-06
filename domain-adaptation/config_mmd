@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+python da_office.py --src 0 --tar 1 --dist mmd --reg 30   --bandwidth 5
+python da_office.py --src 0 --tar 2 --dist mmd --reg 300  --bandwidth 7
+python da_office.py --src 1 --tar 0 --dist mmd --reg 300  --bandwidth 4
+python da_office.py --src 1 --tar 2 --dist mmd --reg 0.03 --bandwidth 2
+python da_office.py --src 2 --tar 0 --dist mmd --reg 10   --bandwidth 7 
+python da_office.py --src 2 --tar 1 --dist mmd --reg 0.03 --bandwidth 2

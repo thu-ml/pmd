@@ -8,7 +8,7 @@ import os, sys
 from utils import reuse
 
 
-class PMD:
+class PMD_DA:
     def __init__(self, params, conv=False):
         self.g = tf.Graph()
 

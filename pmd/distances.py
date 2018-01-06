@@ -107,12 +107,12 @@ def my_distance(dist, arch, bw, x, y):
                                   mmd(x, y, 8) + 
                                   mmd(x, y, 16))
         elif arch != 'ae':
-            matched_obj = tf.sqrt(mmd(x, y, 1) + 
-                                  mmd(x, y, np.sqrt(2.5)) +
-                                  mmd(x, y, np.sqrt(5)) + 
-                                  mmd(x, y, np.sqrt(10)) + 
-                                  mmd(x, y, np.sqrt(20)) + 
-                                  mmd(x, y, np.sqrt(40)))
+            matched_obj = tf.sqrt(mmd(x, y, 4) + 
+                                  mmd(x, y, 10) +
+                                  mmd(x, y, 20) + 
+                                  mmd(x, y, 40) + 
+                                  mmd(x, y, 80) + 
+                                  mmd(x, y, 160))
         else:
             matched_obj = tf.sqrt(mmd(x, y, bw))
     return matched_obj
