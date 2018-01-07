@@ -1,16 +1,48 @@
-Installation
+Population Matching Discrepancy
 ====
+
+Code for the paper [Population Matching Discrepancy and Applications in Deep Learning](https://papers.nips.cc/paper/7206-population-matching-discrepancy-and-applications-in-deep-learning.pdf).
+
+
+Installation
+----
 
     git clone git@github.com:cjf00000/pmd.git
     cd pmd
     pip install -e .
 
+
+Domain Adaptation Usage
+----
+
+Download the data
+
+    cd domain_adaptation
+    wget https://github.com/cjf00000/pmd/releases/download/v0.1/data.tar.gz
+    tar xzvf data.tar.gz
+    ./config_pmd  or  ./config_mmd
+
+
 Generative Model Usage
-====
-The scripts will automatically download MNIST and CIFAR10 datasets. The LFW dataset and SVHN dataset can currently be found in jungpu10:/home/jianfei/pmd-data.
+----
+The scripts will automatically download MNIST and CIFAR10 datasets.
 
 Running:
    
     cd generative-model
     mkdir data
     CUDA_VISIBLE_DEVICES=0 configs/mnist_pmd_fc
+
+
+Cite
+----
+
+If you find the code is useful, please cite our paper!
+
+    @inproceedings{chen2017population,
+      title={Population Matching Discrepancy and Applications in Deep Learning},
+      author={Chen, Jianfei and Chongxuan, LI and Ru, Yizhong and Zhu, Jun},
+      booktitle={Advances in Neural Information Processing Systems},
+      pages={6263--6275},
+      year={2017}
+    }
