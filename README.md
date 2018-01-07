@@ -7,8 +7,12 @@ Code for the paper [Population Matching Discrepancy and Applications in Deep Lea
 Installation
 ----
 
+Make sure that you have valid c++11 and cuda compilers.
+
     git clone git@github.com:cjf00000/pmd.git
     cd pmd
+    pip install --upgrade pip
+    pip install cython numpy tensorflow scipy matplotlib scikit-image scikit-learn seaborn
     pip install -e .
 
 
@@ -18,9 +22,10 @@ Domain Adaptation Usage
 Download the data
 
     cd domain_adaptation
-    wget https://github.com/cjf00000/pmd/releases/download/v0.1/data.tar.gz
+    wget -O data.tar.gz https://github.com/cjf00000/pmd-data/blob/master/data.tar.gz?raw=true
     tar xzvf data.tar.gz
-    ./config_pmd  or  ./config_mmd
+
+See `config.pmd` or `config.mmd` for the training recipes.
 
 
 Generative Model Usage
@@ -31,7 +36,9 @@ Running:
    
     cd generative-model
     mkdir data
-    CUDA_VISIBLE_DEVICES=0 configs/mnist_pmd_fc
+    configs/mnist_pmd_fc
+
+The images will be generated in the `result` directory.
 
 
 Cite
